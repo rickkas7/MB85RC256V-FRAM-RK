@@ -5,7 +5,7 @@
 class MB85RC256V {
 public:
 	/**
-	 * You typically create one of these objects on the stack.
+	 * You typically create one of these objects as a global variable
 	 *
 	 * The first argument is typically Wire (pins D0 and D1). On the Electron it can also be Wire1 (pins C4 and C5)
 	 *

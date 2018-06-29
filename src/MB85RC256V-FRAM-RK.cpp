@@ -79,7 +79,7 @@ bool MB85RC256V::writeData(size_t framAddr, const uint8_t *data, size_t dataLen)
 		wire.write(framAddr >> 8);
 		wire.write(framAddr);
 
-		for(size_t ii = 0; ii < 32 && dataLen > 0; ii++) {
+		for(size_t ii = 0; ii < 30 && dataLen > 0; ii++) {
 			wire.write(*data);
 			framAddr++;
 			data++;
