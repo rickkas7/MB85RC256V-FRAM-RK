@@ -1,4 +1,11 @@
 - build: examples/simple
-  photon: [0.6.3, 0.7.0, 0.8.0-rc.8]
+  photon: [0.6.3, 0.7.0, 1.1.0, 1.2.1, 1.3.1, 1.4.2]
   p1: [latest]
+  electron: [1.0.0, latest]
+  argon: [latest]
+  boron: [latest]
+  xenon: [latest]
+- build: examples/test1m
+  photon: [latest]
   electron: [latest]
+  argon: [latest]

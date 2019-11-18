@@ -3,95 +3,204 @@
 #include "MB85RC256V-FRAM-RK.h"
 
 
-MB85RC256V::MB85RC256V(TwoWire &wire, int addr) :
-	wire(wire), addr(addr) {
+MB85RC::MB85RC(TwoWire &wire, size_t memorySize, int addr) :
+	wire(wire), memorySize(memorySize), addr(addr) {
 }
 
-MB85RC256V::~MB85RC256V() {
+MB85RC::~MB85RC() {
 }
 
-void MB85RC256V::begin() {
+void MB85RC::begin() {
 	wire.begin();
 }
 
-bool MB85RC256V::erase() {
+bool MB85RC::erase() {
 
-	size_t framAddr = 0;
-	size_t totalLen = MEMORY_SIZE;
+	WITH_LOCK(wire) {
+		size_t framAddr = 0;
+		size_t totalLen = memorySize;
 
-	uint8_t zero[32];
-	memset(zero, 0, sizeof(zero));
+		uint8_t zero[30];
+		memset(zero, 0, sizeof(zero));
 
-	while(totalLen > 0) {
-		bool result = writeData(framAddr, zero, sizeof(zero));
-		if (!result) {
-			return false;
+		while(totalLen > 0) {
+			size_t count = totalLen;
+			if (count > sizeof(zero)) {
+				count = sizeof(zero);
+			}
+
+			bool result = writeData(framAddr, zero, count);
+			if (!result) {
+				Log.info("writeData failed during erase framAddr=%u", framAddr);
+				return false;
+			}
+
+			totalLen -= count;
+			framAddr += count;
 		}
-
-		totalLen -= sizeof(zero);
-		framAddr += sizeof(zero);
 	}
+
 	return true;
 }
 
 
-bool MB85RC256V::readData(size_t framAddr, uint8_t *data, size_t dataLen) {
+bool MB85RC::readData(size_t framAddr, uint8_t *data, size_t dataLen) {
 	bool result = true;
 
-	while(dataLen > 0) {
-		wire.beginTransmission(addr | DEVICE_ADDR);
-		wire.write(framAddr >> 8);
-		wire.write(framAddr);
-		int stat = wire.endTransmission(false);
-		if (stat != 0) {
-			//Serial.printlnf("read set address failed %d", stat);
-			result = false;
-			break;
-		}
+	WITH_LOCK(wire) {
 
-		size_t bytesToRead = dataLen;
-		if (bytesToRead > 32) {
-			bytesToRead = 32;
-		}
+		while(dataLen > 0) {
+			wire.beginTransmission(addr | DEVICE_ADDR);
+			wire.write(framAddr >> 8);
+			wire.write(framAddr);
+			int stat = wire.endTransmission(false);
+			if (stat != 0) {
+				//Serial.printlnf("read set address failed %d", stat);
+				result = false;
+				break;
+			}
 
-		wire.requestFrom(addr | DEVICE_ADDR, bytesToRead, true);
+			size_t bytesToRead = dataLen;
+			if (bytesToRead > 32) {
+				bytesToRead = 32;
+			}
 
-		if (Wire.available() < (int) bytesToRead) {
-			result = false;
-			break;
-		}
+			wire.requestFrom(addr | DEVICE_ADDR, bytesToRead, true);
 
-		for(size_t ii = 0; ii < bytesToRead; ii++) {
-		    *data++ = Wire.read();    // receive a byte as character
-		    framAddr++;
-		    dataLen--;
+			if (Wire.available() < (int) bytesToRead) {
+				result = false;
+				break;
+			}
+
+			for(size_t ii = 0; ii < bytesToRead; ii++) {
+				*data++ = Wire.read();    // receive a byte as character
+				framAddr++;
+				dataLen--;
+			}
 		}
 	}
 	return result;
 }
 
 
-bool MB85RC256V::writeData(size_t framAddr, const uint8_t *data, size_t dataLen) {
+bool MB85RC::writeData(size_t framAddr, const uint8_t *data, size_t dataLen) {
 	bool result = true;
 
-	while(dataLen > 0) {
-		wire.beginTransmission(addr | DEVICE_ADDR);
-		wire.write(framAddr >> 8);
-		wire.write(framAddr);
+	WITH_LOCK(wire) {
+		while(dataLen > 0) {
+			wire.beginTransmission(addr | DEVICE_ADDR);
+			wire.write(framAddr >> 8);
+			wire.write(framAddr);
 
-		for(size_t ii = 0; ii < 30 && dataLen > 0; ii++) {
-			wire.write(*data);
-			framAddr++;
-			data++;
-			dataLen--;
-		}
+			for(size_t ii = 0; ii < 30 && dataLen > 0; ii++) {
+				wire.write(*data);
+				framAddr++;
+				data++;
+				dataLen--;
+			}
 
-		int stat = wire.endTransmission(true);
-		if (stat != 0) {
-			//Serial.printlnf("write failed %d", stat);
-			result = false;
-			break;
+			int stat = wire.endTransmission(true);
+			if (stat != 0) {
+				//Serial.printlnf("write failed %d", stat);
+				result = false;
+				break;
+			}
 		}
 	}
 	return result;
 }
+
+//
+// Special versions of readData and writeData are required for the MB85RC1M
+//
+
+bool MB85RC1M::readData(size_t framAddr, uint8_t *data, size_t dataLen) {
+	bool result = true;
+
+	WITH_LOCK(wire) {
+
+		while(dataLen > 0) {
+			size_t count = dataLen;
+			if (count > 32) {
+				// Don't read more than 32 bytes (limit of Wire implementation)
+				count = 32;
+			}
+			if ((framAddr < 65536) && ((framAddr + count) >= 65536)) {
+				// Crosses boundary at 65536, only write up to the boundary
+				count = 65536 - framAddr;
+			}
+
+			wire.beginTransmission(getI2CAddr(framAddr));
+			wire.write(framAddr >> 8);
+			wire.write(framAddr);
+			int stat = wire.endTransmission(false);
+			if (stat != 0) {
+				Log.info("read set address failed %d", stat);
+				result = false;
+				break;
+			}
+
+			wire.requestFrom(getI2CAddr(framAddr), count, true);
+
+			if (Wire.available() < (int) count) {
+				Log.info("didn't receive enough bytes count=%u", count);
+				result = false;
+				break;
+			}
+
+			for(size_t ii = 0; ii < count; ii++) {
+				*data++ = Wire.read();    // receive a byte as character
+				framAddr++;
+				dataLen--;
+			}
+		}
+	}
+	return result;
+}
+
+bool MB85RC1M::writeData(size_t framAddr, const uint8_t *data, size_t dataLen) {
+	bool result = true;
+
+	WITH_LOCK(wire) {
+		while(dataLen > 0) {
+			size_t count = dataLen;
+			if (count > 30) {
+				// Don't write more than 30 bytes (limit of Wire implementation)
+				count = 30;
+			}
+			if ((framAddr < 65536) && ((framAddr + count) >= 65536)) {
+				// Crosses boundary at 65536, only write up to the boundary
+				count = 65536 - framAddr;
+			}
+
+			wire.beginTransmission(getI2CAddr(framAddr));
+			wire.write(framAddr >> 8);
+			wire.write(framAddr);
+
+			for(size_t ii = 0; ii < count; ii++) {
+				wire.write(*data);
+				framAddr++;
+				data++;
+				dataLen--;
+				count--;
+			}
+
+			int stat = wire.endTransmission(true);
+			if (stat != 0) {
+				Log.info("write failed %d", stat);
+				result = false;
+				break;
+			}
+		}
+	}
+	return result;
+}
+
+int MB85RC1M::getI2CAddr(size_t framAddr) const {
+	return addr | DEVICE_ADDR | (framAddr >= 65536 ? 1 : 0);
+}
+
+
+
+
+
