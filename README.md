@@ -74,8 +74,13 @@ Note that with the MB85RC1M chip, the A0 pin is N/C. You can leave it unconnecte
 
 ## Version History
 
+#### 0.0.4 (2019-11-18)
+
+- Added moveData() method to efficiently move data. Supports overlap.
+
 #### 0.0.3 (2019-11-18)
 
 - Added support for MB85RC64, MB85RC512, MB85RC1M
 - Now surrounds transactions with WITH_LOCK(wire) for thread safety
 - Minimum support Device OS version is now 1.0.0
+

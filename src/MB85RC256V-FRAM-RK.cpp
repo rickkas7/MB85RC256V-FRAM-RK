@@ -110,6 +110,66 @@ bool MB85RC::writeData(size_t framAddr, const uint8_t *data, size_t dataLen) {
 	return result;
 }
 
+
+bool MB85RC::moveData(size_t framAddrFrom, size_t framAddrTo, size_t numBytes) {
+	bool result = true;
+
+	// Maximum number of bytes we can write is 30
+	uint8_t buf[30];
+
+	WITH_LOCK(wire) {
+		if (framAddrFrom < framAddrTo) {
+			// Moving to a higher address - copy from the end of the from buffer
+			framAddrFrom += numBytes;
+			framAddrTo += numBytes;
+			while(numBytes > 0) {
+				size_t count = numBytes;
+				if (count > sizeof(buf)) {
+					count = sizeof(buf);
+				}
+				framAddrFrom -= count;
+				framAddrTo -= count;
+
+				result = readData(framAddrFrom, buf, count);
+				if (!result) {
+					break;
+				}
+				result = writeData(framAddrTo, buf, count);
+				if (!result) {
+					break;
+				}
+
+				numBytes -= count;
+			}
+
+		}
+		else
+		if (framAddrFrom > framAddrTo) {
+			// Moving to a lower address - copy from beginning of the from buffer
+			while(numBytes > 0) {
+				size_t count = numBytes;
+				if (count > sizeof(buf)) {
+					count = sizeof(buf);
+				}
+				result = readData(framAddrFrom, buf, count);
+				if (!result) {
+					break;
+				}
+				result = writeData(framAddrTo, buf, count);
+				if (!result) {
+					break;
+				}
+				framAddrFrom += count;
+				framAddrTo += count;
+				numBytes -= count;
+			}
+		}
+	}
+	return result;
+}
+
+
+
 //
 // Special versions of readData and writeData are required for the MB85RC1M
 //

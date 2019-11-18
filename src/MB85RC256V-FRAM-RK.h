@@ -83,6 +83,17 @@ public:
      */
 	virtual bool writeData(size_t framAddr, const uint8_t *data, size_t dataLen);
 
+	/**
+	 * @brief Move data within the FRAM. This is just a read then write operation.
+	 *
+	 * @param framAddrFrom address to read from
+	 *
+	 * @param framAddrTo address to write to
+	 *
+	 * @param numBytes number of bytes to move
+	 */
+	virtual bool moveData(size_t framAddrFrom, size_t framAddrTo, size_t numBytes);
+
 	static const uint8_t DEVICE_ADDR = 0b1010000;
 
 protected:

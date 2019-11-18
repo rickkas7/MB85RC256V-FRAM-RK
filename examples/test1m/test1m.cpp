@@ -10,6 +10,9 @@ MB85RC1M fram(Wire, 0);
 void runTest();
 
 void setup() {
+	// Wait for a USB serial connection for up to 10 seconds
+	waitFor(Serial.isConnected, 10000);
+
 	fram.begin();
 }
 
@@ -100,6 +103,109 @@ void runTest() {
 	}
 
 	{
+		TimeTest timer("moveTest");
+
+		uint8_t buf1[128];
+		uint8_t buf2[128];
+
+		for(size_t ii = 0; ii < sizeof(buf1); ii++) {
+			buf1[ii] = (uint8_t) rand();
+			buf2[ii] = 0;
+		}
+
+		bool bResult = fram.writeData(0, buf1, sizeof(buf1));
+		if (!bResult) {
+			Log.info("writeData failed line=%u", __LINE__);
+			return;
+		}
+
+		bResult = fram.readData(0, buf2, sizeof(buf2));
+		if (!bResult) {
+			Log.info("readData failed line=%u", __LINE__);
+			return;
+		}
+
+		for(size_t ii = 0; ii < sizeof(buf1); ii++) {
+			if (buf1[ii] != buf2[ii]) {
+				Log.error("data was %02x expected %02x ii=%u line=%u", buf2[ii], buf1[ii], ii, __LINE__);
+				return;
+			}
+		}
+
+		// Move higher
+		bResult = fram.moveData(50, 75, 40);
+		if (!bResult) {
+			Log.info("moveData failed line=%u", __LINE__);
+			return;
+		}
+
+		bResult = fram.readData(0, buf2, sizeof(buf2));
+		if (!bResult) {
+			Log.info("readData failed line=%u", __LINE__);
+			return;
+		}
+
+		for(size_t ii = 0; ii < 75; ii++) {
+			if (buf2[ii] != buf1[ii]) {
+				Log.error("data was %02x expected %02x ii=%u line=%u", buf2[ii], buf1[ii], ii, __LINE__);
+				return;
+			}
+		}
+		for(size_t ii = 0; ii < 40; ii++) {
+			if (buf2[75 + ii] != buf1[50 + ii]) {
+				Log.error("data was %02x expected %02x ii=%u line=%u", buf2[75 + ii], buf1[50 + ii], ii, __LINE__);
+				return;
+			}
+		}
+		for(size_t ii = 115; ii < 128; ii++) {
+			if (buf2[ii] != buf1[ii]) {
+				Log.error("data was %02x expected %02x ii=%u line=%u", buf2[ii], buf1[ii], ii, __LINE__);
+				return;
+			}
+		}
+
+		bResult = fram.writeData(0, buf1, sizeof(buf1));
+		if (!bResult) {
+			Log.info("writeData failed line=%u", __LINE__);
+			return;
+		}
+
+		// Move lower
+		bResult = fram.moveData(50, 25, 40);
+		if (!bResult) {
+			Log.info("moveData failed line=%u", __LINE__);
+			return;
+		}
+
+		bResult = fram.readData(0, buf2, sizeof(buf2));
+		if (!bResult) {
+			Log.info("readData failed line=%u", __LINE__);
+			return;
+		}
+
+		for(size_t ii = 0; ii < 25; ii++) {
+			if (buf2[ii] != buf1[ii]) {
+				Log.error("data was %02x expected %02x ii=%u line=%u", buf2[ii], buf1[ii], ii, __LINE__);
+				return;
+			}
+		}
+		for(size_t ii = 0; ii < 40; ii++) {
+			if (buf2[25 + ii] != buf1[50 + ii]) {
+				Log.error("data was %02x expected %02x ii=%u line=%u", buf2[25 + ii], buf1[50 + ii], ii, __LINE__);
+				return;
+			}
+		}
+		for(size_t ii = 65; ii < 128; ii++) {
+			if (buf2[ii] != buf1[ii]) {
+				Log.error("data was %02x expected %02x ii=%u line=%u", buf2[ii], buf1[ii], ii, __LINE__);
+				return;
+			}
+		}
+
+
+	}
+
+	{
 		TimeTest timer("erase");
 		fram.erase();
 	}
@@ -130,6 +236,6 @@ void runTest() {
 			framAddr += count;
 			dataLen -= count;
 		}
-
 	}
+
 }
