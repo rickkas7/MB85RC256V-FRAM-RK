@@ -78,3 +78,4 @@ Note that with the MB85RC1M chip, the A0 pin is N/C. You can leave it unconnecte
 
 - Added support for MB85RC64, MB85RC512, MB85RC1M
 - Now surrounds transactions with WITH_LOCK(wire) for thread safety
+- Minimum support Device OS version is now 0.7.0
