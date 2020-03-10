@@ -74,6 +74,10 @@ Note that with the MB85RC1M chip, the A0 pin is N/C. You can leave it unconnecte
 
 ## Version History
 
+#### 0.0.5 (2020-03-10)
+
+- Fix compile error for ambiguous receiveFrom() with 1.5.0.rc.2.
+
 #### 0.0.4 (2019-11-18)
 
 - Added moveData() method to efficiently move data. Supports overlap.

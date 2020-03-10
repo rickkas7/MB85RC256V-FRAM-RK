@@ -190,7 +190,7 @@ public:
      */
 	virtual bool writeData(size_t framAddr, const uint8_t *data, size_t dataLen);
 
-	int getI2CAddr(size_t framAddr) const;
+	uint8_t getI2CAddr(size_t framAddr) const;
 };
 
 

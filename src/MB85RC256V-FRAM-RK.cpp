@@ -65,7 +65,7 @@ bool MB85RC::readData(size_t framAddr, uint8_t *data, size_t dataLen) {
 				bytesToRead = 32;
 			}
 
-			wire.requestFrom(addr | DEVICE_ADDR, bytesToRead, true);
+			wire.requestFrom((uint8_t)(addr | DEVICE_ADDR), bytesToRead, (uint8_t) true);
 
 			if (Wire.available() < (int) bytesToRead) {
 				result = false;
@@ -200,7 +200,7 @@ bool MB85RC1M::readData(size_t framAddr, uint8_t *data, size_t dataLen) {
 				break;
 			}
 
-			wire.requestFrom(getI2CAddr(framAddr), count, true);
+			wire.requestFrom(getI2CAddr(framAddr), count, (uint8_t) true);
 
 			if (Wire.available() < (int) count) {
 				Log.info("didn't receive enough bytes count=%u", count);
@@ -256,8 +256,8 @@ bool MB85RC1M::writeData(size_t framAddr, const uint8_t *data, size_t dataLen) {
 	return result;
 }
 
-int MB85RC1M::getI2CAddr(size_t framAddr) const {
-	return addr | DEVICE_ADDR | (framAddr >= 65536 ? 1 : 0);
+uint8_t MB85RC1M::getI2CAddr(size_t framAddr) const {
+	return (uint8_t) (addr | DEVICE_ADDR | (framAddr >= 65536 ? 1 : 0));
 }
 
 
